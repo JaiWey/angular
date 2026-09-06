@@ -296,6 +296,8 @@ export class DomRendererFactory2 implements RendererFactory2, OnDestroy {
    * @param componentId ID of the component that is being replaced.
    */
   protected componentReplaced(componentId: string) {
+    const renderer = this.rendererByCompId.get(componentId);
+    renderer?.removeStyles();
     this.rendererByCompId.delete(componentId);
   }
 }
@@ -680,6 +682,10 @@ class NoneEncapsulationDomRenderer extends DefaultDomRenderer2 {
     if (!this.removeStylesOnCompDestroy) {
       return;
     }
+    this.removeStyles();
+  }
+
+  removeStyles(): void {
     if (allLeavingAnimations.size === 0) {
       this.sharedStylesHost.removeStyles(this.styles, this.styleUrls);
     }

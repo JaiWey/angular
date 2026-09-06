@@ -9,7 +9,10 @@
 import {computeMsgId} from '@angular/compiler';
 import {TestBed} from '@angular/core/testing';
 import {clearTranslations, loadTranslations} from '@angular/localize';
-import {EVENT_MANAGER_PLUGINS} from '@angular/platform-browser';
+import {
+  EVENT_MANAGER_PLUGINS,
+  REMOVE_STYLES_ON_COMPONENT_DESTROY,
+} from '@angular/platform-browser';
 import {isNode} from '@angular/private/testing';
 import {
   ChangeDetectionStrategy,
@@ -121,6 +124,54 @@ describe('hot module replacement', () => {
         </child-cmp>
       `,
     );
+  });
+
+  it('should remove styles from a replaced component when style removal on destroy is disabled', () => {
+    const initialMetadata: Component = {
+      selector: 'child-cmp',
+      template: 'Initial',
+      styles: '.hmr-old-style { color: red; }',
+      changeDetection: ChangeDetectionStrategy.Eager,
+    };
+
+    @Component(initialMetadata)
+    class ChildCmp {}
+
+    @Component({
+      imports: [ChildCmp],
+      template: '<child-cmp/>',
+      changeDetection: ChangeDetectionStrategy.Eager,
+    })
+    class RootCmp {}
+
+    TestBed.configureTestingModule({
+      providers: [
+        {
+          provide: REMOVE_STYLES_ON_COMPONENT_DESTROY,
+          useValue: false,
+        },
+      ],
+    });
+
+    const fixture = TestBed.createComponent(RootCmp);
+    fixture.detectChanges();
+
+    const getStyleCount = (styleText: string) =>
+      Array.from(document.head.querySelectorAll('style')).filter((style) =>
+        style.textContent?.includes(styleText),
+      ).length;
+
+    expect(getStyleCount('.hmr-old-style')).toBe(1);
+
+    replaceMetadata(ChildCmp, {
+      ...initialMetadata,
+      template: 'Replaced',
+      styles: '.hmr-new-style { color: blue; }',
+    });
+    fixture.detectChanges();
+
+    expect(getStyleCount('.hmr-old-style')).toBe(0);
+    expect(getStyleCount('.hmr-new-style')).toBe(1);
   });
 
   it('should recreate multiple usages of a complex component', () => {
